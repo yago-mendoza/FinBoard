@@ -1,0 +1,81 @@
+/* ── Chart Containers ── */
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+}
+
+.chart-wrap__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+}
+
+.chart-wrap__title {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.chart-canvas-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Fixed heights for chart types */
+.chart-canvas-container--sm { height: 200px; }
+.chart-canvas-container--md { height: 300px; }
+.chart-canvas-container--lg { height: 400px; }
+.chart-canvas-container--doughnut { height: 280px; }
+
+/* ── Chart legends (custom) ── */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  padding-top: var(--sp-3);
+}
+
+.chart-legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+.chart-legend__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Loading overlay for charts ── */
+.chart-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+}
+
+.chart-loading::after {
+  content: 'Loading...';
+  animation: pulse 1.5s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}

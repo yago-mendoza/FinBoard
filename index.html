@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinBoard</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3/dist/chartjs-plugin-annotation.min.js"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/charts.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <!-- Loader screen (shown before data is loaded) -->
+  <div id="loader-screen"></div>
+
+  <!-- Main app shell (hidden until data loaded) -->
+  <div id="app-shell" class="hidden">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar__left">
+        <button class="topbar__menu-btn" id="sidebar-toggle" aria-label="Toggle sidebar">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <rect y="3" width="20" height="2" rx="1"/>
+            <rect y="9" width="20" height="2" rx="1"/>
+            <rect y="15" width="20" height="2" rx="1"/>
+          </svg>
+        </button>
+        <span class="topbar__brand">FinBoard</span>
+        <span class="topbar__breadcrumb" id="breadcrumb"></span>
+      </div>
+      <div class="ticker-search" id="ticker-search">
+        <input type="text" class="input input--sm" id="ticker-search-input" placeholder="Search ticker..." autocomplete="off">
+        <div class="ticker-search__dropdown" id="ticker-search-dropdown"></div>
+      </div>
+      <div class="topbar__right">
+        <span class="topbar__status" id="price-status"></span>
+        <button class="btn btn--icon" id="refresh-prices" title="Refresh prices">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1a7 7 0 0 0-7 7h2a5 5 0 0 1 9.17-2.74L10 7h5V2l-1.76 1.76A7 7 0 0 0 8 1zM3 8a5 5 0 0 1 5 5 5 5 0 0 1-3.17-1.26L7 10H2v5l1.76-1.76A7 7 0 0 0 15 8h-2a5 5 0 0 1-5 5 5 5 0 0 1-5-5z"/>
+          </svg>
+        </button>
+        <button class="btn btn--ghost btn--sm" id="clear-data" title="Clear data & restart">Clear</button>
+      </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar__nav">
+        <a class="sidebar__link" href="#dashboard" data-view="dashboard">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><rect x="1" y="1" width="7" height="7" rx="1"/><rect x="10" y="1" width="7" height="7" rx="1"/><rect x="1" y="10" width="7" height="7" rx="1"/><rect x="10" y="10" width="7" height="7" rx="1"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a class="sidebar__link" href="#holdings" data-view="holdings">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><path d="M2 3h14v2H2zm0 5h14v2H2zm0 5h14v2H2z"/></svg>
+          <span>Holdings</span>
+        </a>
+        <a class="sidebar__link" href="#transactions" data-view="transactions">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><path d="M3 2v14h12V6l-4-4H3zm8 1l3 3h-3V3zM5 12h8v1H5zm0-3h8v1H5zm0-3h4v1H5z"/></svg>
+          <span>Transactions</span>
+        </a>
+        <a class="sidebar__link" href="#timeline" data-view="timeline">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><path d="M2 14h2V7H2zm4 0h2V4H6zm4 0h2V9h-2zm4 0h2V2h-2z"/></svg>
+          <span>Timeline</span>
+        </a>
+        <a class="sidebar__link" href="#analysis" data-view="analysis">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 2a7 7 0 0 1 0 14V2z"/></svg>
+          <span>Analysis</span>
+        </a>
+        <a class="sidebar__link" href="#compare" data-view="compare">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><path d="M2 14V4h2v10zm4 0V7h2v7zm4 0V5h2v9zm4 0V2h2v12z"/></svg>
+          <span>Compare</span>
+        </a>
+      </nav>
+
+      <div class="sidebar__filters">
+        <h3 class="sidebar__heading">Filters</h3>
+
+        <div class="filter-group">
+          <label class="filter-label">Platform</label>
+          <div class="chip-group" id="filter-platform"></div>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Type</label>
+          <div class="chip-group" id="filter-type"></div>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Date Range</label>
+          <input type="date" class="input input--sm" id="filter-date-from" placeholder="From">
+          <input type="date" class="input input--sm" id="filter-date-to" placeholder="To">
+        </div>
+
+        <button class="btn btn--ghost btn--sm btn--full" id="clear-filters">Clear Filters</button>
+      </div>
+    </aside>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Content area -->
+    <main class="content" id="content">
+      <!-- Views render here -->
+    </main>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- JS Modules -->
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/portfolio.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/help.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/demo-data.js"></script>
+  <script src="js/views/loader.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/holdings.js"></script>
+  <script src="js/views/transactions.js"></script>
+  <script src="js/views/timeline.js"></script>
+  <script src="js/views/analysis.js"></script>
+  <script src="js/views/asset-detail.js"></script>
+  <script src="js/views/compare.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
