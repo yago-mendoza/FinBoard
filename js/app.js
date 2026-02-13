@@ -2,6 +2,9 @@
 const App = (() => {
 
   function init() {
+    // Load settings
+    Settings.load();
+
     // Init Chart.js dark theme
     Charts.initDefaults();
 
@@ -9,10 +12,13 @@ const App = (() => {
     Router.register('dashboard', (c) => DashboardView.render(c));
     Router.register('holdings', (c) => HoldingsView.render(c));
     Router.register('transactions', (c) => TransactionsView.render(c));
-    Router.register('timeline', (c) => TimelineView.render(c));
-    Router.register('analysis', (c) => AnalysisView.render(c));
-    Router.register('asset-detail', (c, p) => AssetDetailView.render(c, p));
-    Router.register('compare', (c) => CompareView.render(c));
+    Router.register('analysis', (c, p) => AnalysisView.render(c, p));
+    Router.register('market', (c, p) => MarketView.render(c, p));
+
+    // Redirect legacy routes
+    Router.register('timeline', () => Router.navigate('analysis', 'timeline'));
+    Router.register('compare', () => Router.navigate('market', 'compare'));
+    Router.register('asset-detail', (c, p) => { if (p) Router.navigate('market', p); else Router.navigate('market', 'search'); });
 
     // Event listeners for filter changes -> re-render
     EventBus.on('filters:changed', () => Router.refresh());
@@ -43,9 +49,26 @@ const App = (() => {
       fetchAndApplyPrices();
     });
 
+    // Settings gear toggle
+    document.getElementById('settings-toggle').addEventListener('click', () => {
+      Settings.togglePanel();
+    });
+
+    // Settings overlay click to close
+    document.getElementById('settings-overlay').addEventListener('click', () => {
+      Settings.togglePanel();
+    });
+
+    // Export dropdown toggle
+    document.getElementById('export-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+      Export.toggleDropdown();
+    });
+    Export.bindDropdown();
+
     // Clear data button
     document.getElementById('clear-data').addEventListener('click', () => {
-      if (confirm('Clear all data and return to loader?')) {
+      if (confirm('Clear all data and return to start?')) {
         AppState.clearStorage();
         AppState.set('rawTransactions', []);
         AppState.set('holdings', []);
@@ -107,7 +130,7 @@ const App = (() => {
 
     function navigateTo(symbol) {
       if (!symbol) return;
-      Router.navigate('asset-detail', symbol);
+      Router.navigate('market', symbol);
       input.value = '';
       dropdown.classList.remove('open');
       input.blur();
@@ -223,8 +246,26 @@ const App = (() => {
     const statusEl = document.getElementById('price-status');
     statusEl.textContent = 'Fetching prices...';
 
+    // Show full-screen overlay
+    const overlay = document.getElementById('price-overlay');
+    const fill = document.getElementById('price-overlay-fill');
+    const countEl = document.getElementById('price-overlay-count');
+    if (overlay) overlay.style.display = 'flex';
+
+    const total = symbols.filter(s => Config.getYahooTicker(s)).length;
+    let fetched = 0;
+
+    function updateProgress() {
+      if (fill) fill.style.width = total > 0 ? `${(fetched / total) * 100}%` : '0%';
+      if (countEl) countEl.textContent = `${fetched} / ${total}`;
+    }
+    updateProgress();
+
     try {
-      const prices = await API.fetchPrices(symbols);
+      const prices = await API.fetchPrices(symbols, (done, tot) => {
+        fetched = done;
+        updateProgress();
+      });
       AppState.set('livePrices', prices);
 
       // Update holdings with prices
@@ -241,6 +282,7 @@ const App = (() => {
       console.error('Price fetch error:', e);
     } finally {
       AppState.set('pricesLoading', false);
+      if (overlay) overlay.style.display = 'none';
     }
   }
 

@@ -80,6 +80,7 @@ const Config = (() => {
     BINA: 'Binance', LDGR: 'Ledger', KRKN: 'Kraken', OASI: 'Oasis',
     ETOR: 'eToro', DGRO: 'Degiro', T212: 'Trading 212',
     COBS: 'Coinbase', KUCN: 'KuCoin', MTMK: 'MetaMask',
+    BBVA: 'BBVA',
   };
 
   const PLATFORM_COLORS = {
@@ -87,7 +88,11 @@ const Config = (() => {
     BINA: '#f0883e', LDGR: '#a371f7', KRKN: '#79c0ff', OASI: '#d29922',
     ETOR: '#4CAF50', DGRO: '#FF5722', T212: '#00BCD4',
     COBS: '#0052FF', KUCN: '#23AF91', MTMK: '#F6851B',
+    BBVA: '#004481',
   };
+
+  const VALID_TYPES = ['MKT', 'ETF', 'CRP', 'RSC', 'FUN'];
+  const VALID_ACTIONS = ['buy', 'sel'];
 
   // Stock splits: { date: effective date (YYYY-MM-DD), ratio: new shares per old share }
   // Transactions BEFORE this date get qty *= ratio, price /= ratio (balance unchanged)
@@ -103,8 +108,20 @@ const Config = (() => {
 
   const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
+  // Build reverse map: Yahoo ticker → internal symbol
+  const REVERSE_MAP = {};
+  for (const [sym, yahoo] of Object.entries(TICKER_MAP)) {
+    REVERSE_MAP[yahoo.toUpperCase()] = sym;
+  }
+
   function getYahooTicker(symbol) {
     return TICKER_MAP[symbol] || null;
+  }
+
+  /** Find internal symbol from a Yahoo Finance ticker (e.g. 'BTC-USD' → 'BTC') */
+  function findInternalSymbol(yahooTicker) {
+    if (!yahooTicker) return null;
+    return REVERSE_MAP[yahooTicker.toUpperCase()] || null;
   }
 
   /** Short display name: "Amundi Nasdaq-100" for ISINs, "AAPL" for tickers */
@@ -156,8 +173,8 @@ const Config = (() => {
 
   return {
     TICKER_MAP, ISIN_MAP, SPLITS, SYMBOL_COLORS, TYPE_COLORS, TYPE_LABELS, PLATFORM_LABELS, PLATFORM_COLORS,
-    CORS_PROXIES, CACHE_TTL,
-    getYahooTicker, getDisplayName, getDisplayLabel,
+    CORS_PROXIES, CACHE_TTL, VALID_TYPES, VALID_ACTIONS,
+    getYahooTicker, findInternalSymbol, getDisplayName, getDisplayLabel,
     getSymbolColor, getTypeColor, getTypeLabel, getPlatformLabel, getPlatformColor,
   };
 })();

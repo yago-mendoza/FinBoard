@@ -1,0 +1,180 @@
+/* ── Compact View: Command Center ── */
+.compact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.compact__header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+
+.compact__title {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ── KPI Strip ── */
+.compact__kpi-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+}
+
+.compact__kpi {
+  flex: 1 1 0;
+  min-width: 80px;
+  text-align: center;
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.compact__kpi-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.compact__kpi-value {
+  display: block;
+  font-size: var(--font-sm);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+/* ── 4-column grid ── */
+.compact__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: var(--sp-3);
+}
+
+.compact__cell {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.compact__cell-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--sp-2);
+}
+
+.compact__chart-container {
+  flex: 1;
+  position: relative;
+  min-height: 150px;
+}
+
+.compact__chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Holdings Table ── */
+.compact__cell--table {
+  overflow: hidden;
+}
+
+.compact__table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+.compact__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.compact__table th {
+  text-align: left;
+  padding: 2px 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-default);
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  z-index: 1;
+}
+
+.compact__table td {
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border-muted);
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.compact__table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.compact__table .mono {
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.compact__table .right {
+  text-align: right;
+}
+
+.compact__symbol {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.compact__symbol:hover {
+  text-decoration: underline;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1200px) {
+  .compact__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .compact__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact__kpi-strip {
+    gap: var(--sp-1);
+  }
+
+  .compact__kpi {
+    min-width: 60px;
+  }
+
+  .compact__kpi-value {
+    font-size: var(--font-xs);
+  }
+}

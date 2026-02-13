@@ -62,7 +62,7 @@ const API = (() => {
    * Uses cache (TTL from Config).
    * Returns { SYMBOL: { price, change, changePct, currency, ts } }
    */
-  async function fetchPrices(symbols) {
+  async function fetchPrices(symbols, onProgress) {
     const cache = loadCache();
     const results = {};
     const toFetch = [];
@@ -82,6 +82,9 @@ const API = (() => {
 
     if (toFetch.length === 0) return results;
 
+    let fetched = 0;
+    const total = toFetch.length;
+
     // Fetch in batches of 5 to avoid rate limits
     const BATCH_SIZE = 5;
     for (let i = 0; i < toFetch.length; i += BATCH_SIZE) {
@@ -94,6 +97,8 @@ const API = (() => {
         } catch (e) {
           console.warn(`Failed to fetch ${sym}:`, e.message);
         }
+        fetched++;
+        if (onProgress) onProgress(fetched, total);
       });
       await Promise.allSettled(promises);
 

@@ -58,14 +58,6 @@ const Parser = (() => {
   }
 
   /**
-   * Merge stock + crypto arrays into one sorted array.
-   */
-  function merge(stockRows, cryptoRows) {
-    const all = [...stockRows, ...cryptoRows];
-    return all.sort((a, b) => a.dateObj - b.dateObj);
-  }
-
-  /**
    * Read a File object and return parsed rows.
    */
   function readFile(file) {
@@ -77,5 +69,29 @@ const Parser = (() => {
     });
   }
 
-  return { parseCSV, merge, readFile };
+  /**
+   * Read a File object and return raw text string.
+   */
+  function readFileText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  }
+
+  /**
+   * Read multiple File objects, parse each, merge and sort.
+   */
+  async function readMultipleFiles(files) {
+    const allRows = [];
+    for (const f of files) {
+      const rows = await readFile(f);
+      allRows.push(...rows);
+    }
+    return allRows.sort((a, b) => a.dateObj - b.dateObj);
+  }
+
+  return { parseCSV, readFile, readFileText, readMultipleFiles };
 })();

@@ -103,7 +103,7 @@ const TransactionsView = (() => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="mono">${UI.dateShort(tx.date)}</td>
-      <td class="mono clickable" onclick="Router.navigate('asset-detail','${tx.symbol}')">${Config.getDisplayName(tx.symbol)}</td>
+      <td class="mono clickable" onclick="Router.navigate('market','${tx.symbol}')">${Config.getDisplayName(tx.symbol)}</td>
       <td>${UI.actionBadge(tx.action)}</td>
       <td>${UI.typeBadge(tx.type)}</td>
       <td style="font-size:var(--font-xs)">${Config.getPlatformLabel(tx.platform)}</td>

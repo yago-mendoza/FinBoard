@@ -7,6 +7,7 @@
 
 /* ── Mobile ── */
 @media (max-width: 768px) {
+  .cash-kpis { grid-template-columns: 1fr; }
   :root {
     --sidebar-width: 260px;
   }
@@ -47,4 +48,19 @@
   .kpi-grid { grid-template-columns: 1fr; }
   .kpi__value { font-size: var(--font-xl); }
   .loader-zones { grid-template-columns: 1fr; }
+}
+
+/* ── Settings panel full-width on mobile ── */
+@media (max-width: 768px) {
+  .settings-panel {
+    width: 100vw;
+    max-width: 100vw;
+  }
+}
+
+/* ── Export dropdown mobile ── */
+@media (max-width: 480px) {
+  .export-dropdown__menu {
+    right: -40px;
+  }
 }

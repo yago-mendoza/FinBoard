@@ -25,6 +25,7 @@ const AppState = (() => {
   const state = {
     rawTransactions: [],   // Parsed CSV rows (merged stock + crypto)
     holdings: [],          // Computed current positions
+    cashBalances: {},      // { PLATFORM: cashAmount } from liquidity CSV
     livePrices: {},        // { SYMBOL: { price, change, changePct, ts } }
     filters: {
       platforms: [],       // Active platform filters (empty = all)
@@ -100,7 +101,9 @@ const AppState = (() => {
   function persist() {
     try {
       localStorage.setItem('finboard_transactions', JSON.stringify(state.rawTransactions));
+      localStorage.setItem('finboard_cash', JSON.stringify(state.cashBalances));
       localStorage.setItem('finboard_ts', Date.now().toString());
+      localStorage.setItem('finboard_version', '2');
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
     }
@@ -112,7 +115,12 @@ const AppState = (() => {
       const data = localStorage.getItem('finboard_transactions');
       if (data) {
         const ts = localStorage.getItem('finboard_ts');
-        return { transactions: JSON.parse(data), savedAt: Number(ts) };
+        const cashData = localStorage.getItem('finboard_cash');
+        return {
+          transactions: JSON.parse(data),
+          cashBalances: cashData ? JSON.parse(cashData) : {},
+          savedAt: Number(ts),
+        };
       }
     } catch (e) {
       console.warn('LocalStorage restore failed:', e);
@@ -122,8 +130,12 @@ const AppState = (() => {
 
   function clearStorage() {
     localStorage.removeItem('finboard_transactions');
+    localStorage.removeItem('finboard_cash');
     localStorage.removeItem('finboard_ts');
     localStorage.removeItem('finboard_prices');
+    localStorage.removeItem('finboard_settings');
+    localStorage.removeItem('finboard_layout');
+    localStorage.removeItem('finboard_version');
   }
 
   return {

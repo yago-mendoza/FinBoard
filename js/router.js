@@ -4,6 +4,8 @@ const Router = (() => {
   const routes = {};    // { 'dashboard': renderFn, ... }
   let currentView = null;
   let currentParams = null;
+  let previousView = null;
+  let previousParams = null;
 
   function register(name, renderFn) {
     routes[name] = renderFn;
@@ -31,19 +33,35 @@ const Router = (() => {
       return;
     }
 
+    previousView = currentView;
+    previousParams = currentParams;
     currentView = view;
     currentParams = params;
 
     // Update sidebar active state
     document.querySelectorAll('.sidebar__link').forEach(link => {
       const linkView = link.dataset.view;
-      link.classList.toggle('active', linkView === view || (view === 'asset-detail' && linkView === 'holdings'));
+      link.classList.toggle('active',
+        linkView === view ||
+        (view === 'compare' && linkView === 'market')
+      );
     });
 
     // Update breadcrumb
     const breadcrumb = document.getElementById('breadcrumb');
-    if (view === 'asset-detail' && params) {
-      breadcrumb.textContent = `Holdings / ${params}`;
+    const SPECIAL_MARKET = ['search', 'compare'];
+    if (view === 'market' && params && !SPECIAL_MARKET.includes(params)) {
+      // Asset detail within Market
+      const displayName = Config.getDisplayName(params);
+      breadcrumb.textContent = `Market / ${displayName}`;
+    } else if (view === 'market' && params) {
+      const subLabel = params.charAt(0).toUpperCase() + params.slice(1);
+      breadcrumb.textContent = `Market / ${subLabel}`;
+    } else if (view === 'market') {
+      breadcrumb.textContent = 'Market / Search';
+    } else if (view === 'analysis' && params) {
+      const subLabel = params === 'pnl' ? 'P&L' : params.charAt(0).toUpperCase() + params.slice(1);
+      breadcrumb.textContent = `Analysis / ${subLabel}`;
     } else {
       breadcrumb.textContent = view.charAt(0).toUpperCase() + view.slice(1);
     }
@@ -74,5 +92,9 @@ const Router = (() => {
     return { view: currentView, params: currentParams };
   }
 
-  return { register, navigate, start, refresh, getCurrent };
+  function getPrevious() {
+    return { view: previousView, params: previousParams };
+  }
+
+  return { register, navigate, start, refresh, getCurrent, getPrevious };
 })();

@@ -1,4 +1,4 @@
-/* ── Dashboard View: Scoreboard + KPIs + Allocation + Timeline ── */
+/* ── Dashboard View: KPI Strip + Allocation + Timeline ── */
 const DashboardView = (() => {
 
   function render(container) {
@@ -16,98 +16,139 @@ const DashboardView = (() => {
     const score = Portfolio.computeScoreboard(txs, priced);
     const unpriced = Portfolio.getUnpricedPositions(priced);
 
-    container.innerHTML = `
-      ${renderScoreboard(score, kpi, txs.length)}
+    container.innerHTML = `<div class="dashboard-grid" id="dashboard-grid">
+      <div class="widget" data-widget-id="kpi-strip">
+        ${renderKPIStrip(score, kpi, txs.length)}
+      </div>
 
-      ${unpriced.length > 0 ? renderUnpricedDisclaimer(unpriced) : ''}
+      ${unpriced.length > 0 ? `<div class="widget" data-widget-id="unpriced">${renderUnpricedDisclaimer(unpriced)}</div>` : ''}
 
-      <div class="grid-2">
+      <div class="widget" data-widget-id="timeline">
         <div class="chart-wrap">
           <div class="chart-wrap__header">
-            <span class="chart-wrap__title">Allocation by Type</span>
-            ${UI.helpBtn('alloc-type')}
+            <span class="chart-wrap__title">Portfolio Over Time</span>
+            ${UI.helpBtn('capital-timeline')}
+            <div id="portfolio-chart-legend" class="chart-legend-inline" style="display:none;">
+              <span class="chart-legend-inline__item">
+                <span class="chart-legend-inline__swatch" style="background:#58a6ff;"></span>
+                Invested
+              </span>
+              <span class="chart-legend-inline__item">
+                <span class="chart-legend-inline__swatch" style="background:#3fb950;"></span>
+                Portfolio Value
+              </span>
+            </div>
           </div>
-          <div class="chart-canvas-container chart-canvas-container--doughnut">
-            <canvas id="chart-alloc-type"></canvas>
-          </div>
-        </div>
-        <div class="chart-wrap">
-          <div class="chart-wrap__header">
-            <span class="chart-wrap__title">Allocation by Asset</span>
-            ${UI.helpBtn('alloc-symbol')}
-          </div>
-          <div class="chart-canvas-container chart-canvas-container--doughnut">
-            <canvas id="chart-alloc-symbol"></canvas>
+          <div class="chart-canvas-container chart-canvas-container--md" id="dashboard-capital-container">
+            <canvas id="chart-capital-timeline"></canvas>
           </div>
         </div>
       </div>
 
-      <div class="chart-wrap" style="margin-top: var(--sp-4);">
-        <div class="chart-wrap__header">
-          <span class="chart-wrap__title">Portfolio Over Time</span>
-          <span id="portfolio-chart-loading" class="chart-loading-status" style="display:none;">
-            <span class="chart-loading-status__spinner"></span>
-            <span id="portfolio-chart-loading-text">Loading portfolio value...</span>
-          </span>
-          ${UI.helpBtn('capital-timeline')}
-          <div id="portfolio-chart-legend" class="chart-legend-inline" style="display:none;">
-            <span class="chart-legend-inline__item">
-              <span class="chart-legend-inline__swatch" style="background:#58a6ff;"></span>
-              Invested
-            </span>
-            <span class="chart-legend-inline__item">
-              <span class="chart-legend-inline__swatch" style="background:#3fb950;"></span>
-              Portfolio Value
-            </span>
+      <div class="widget" data-widget-id="allocations">
+        <div class="grid-2">
+          <div class="chart-wrap">
+            <div class="chart-wrap__header">
+              <span class="chart-wrap__title">Allocation by Type</span>
+              ${UI.helpBtn('alloc-type')}
+            </div>
+            <div class="chart-canvas-container chart-canvas-container--doughnut">
+              <canvas id="chart-alloc-type"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-wrap__header">
+              <span class="chart-wrap__title">Allocation by Asset</span>
+              ${UI.helpBtn('alloc-symbol')}
+            </div>
+            <div class="chart-canvas-container chart-canvas-container--doughnut">
+              <canvas id="chart-alloc-symbol"></canvas>
+            </div>
           </div>
         </div>
-        <div class="chart-canvas-container chart-canvas-container--md" id="dashboard-capital-container">
-          <canvas id="chart-capital-timeline"></canvas>
-        </div>
       </div>
-    `;
-
-    // Scoreboard hover interactivity
-    setupScoreboardHover();
+    </div>`;
 
     // Render charts
     renderAllocationType(allocType);
     renderAllocationSymbol(allocSymbol);
     renderCapitalTimeline(timeline);
 
+    // Apply saved layout order (if any)
+    DragManager.applyLayoutTo('#dashboard-grid');
+
     // Async: load portfolio value line
     loadPortfolioValueLine(txs);
   }
 
-  function setupScoreboardHover() {
-    const sb = document.querySelector('.scoreboard');
-    if (!sb) return;
+  function renderKPIStrip(score, kpi, txCount) {
+    const hasUnrealized = score.unrealizedPL != null;
+    const unpricedCost = score.costBasis - score.costBasisPriced;
+    const displayMktValue = score.marketValue + unpricedCost;
 
-    const items = sb.querySelectorAll('[data-group]');
+    const totalPL = hasUnrealized ? score.totalPL : score.totalRealized;
+    const totalPLLabel = hasUnrealized ? 'Total P&L' : 'Realized P&L';
+    const returnStr = hasUnrealized ? UI.pct(score.returnPct) : null;
 
-    items.forEach(el => {
-      el.addEventListener('mouseenter', () => {
-        const g = el.dataset.group;
-        sb.classList.add('sb-active');
+    // Cash total (if available)
+    const cash = AppState.get('cashBalances');
+    const totalCash = cash ? Object.values(cash).reduce((s, v) => s + v, 0) : 0;
+    const hasCash = totalCash > 0;
+    const hasMarketValue = score.hasAnyPrice;
+    const totalPortfolio = (hasCash && hasMarketValue) ? displayMktValue + totalCash : null;
 
-        if (g === 'total') {
-          // Highlight deployed bar + P&L segments + total stat
-          sb.querySelectorAll('[data-group="deployed"]')
-            .forEach(e => e.classList.add('sb-hl'));
-          sb.querySelectorAll('.scoreboard__seg--gain, .scoreboard__seg--loss')
-            .forEach(e => e.classList.add('sb-hl'));
-          el.classList.add('sb-hl');
-        } else {
-          sb.querySelectorAll(`[data-group="${g}"]`)
-            .forEach(e => e.classList.add('sb-hl'));
-        }
-      });
+    let kpis = '';
 
-      el.addEventListener('mouseleave', () => {
-        sb.classList.remove('sb-active');
-        items.forEach(e => e.classList.remove('sb-hl'));
-      });
-    });
+    kpis += kpiItem('Deployed', UI.currency(score.totalDeployed));
+    kpis += `<span class="dashboard-kpi__sep"></span>`;
+
+    if (hasMarketValue) {
+      kpis += kpiItem('Mkt Value', UI.currency(displayMktValue));
+      kpis += `<span class="dashboard-kpi__sep"></span>`;
+    }
+
+    if (hasUnrealized) {
+      kpis += kpiItem('Unrealized', UI.plSign(score.unrealizedPL) + UI.currency(Math.abs(score.unrealizedPL)), UI.plClass(score.unrealizedPL));
+      kpis += `<span class="dashboard-kpi__sep"></span>`;
+    }
+
+    kpis += kpiItem('Realized', UI.plSign(score.totalRealized) + UI.currency(Math.abs(score.totalRealized)), UI.plClass(score.totalRealized));
+    kpis += `<span class="dashboard-kpi__sep"></span>`;
+
+    // Total P&L (hero)
+    kpis += kpiItem(totalPLLabel, UI.plSign(totalPL) + UI.currency(Math.abs(totalPL)), UI.plClass(totalPL), true);
+
+    if (returnStr) {
+      kpis += `<span class="dashboard-kpi__sep"></span>`;
+      kpis += kpiItem('Return', returnStr, UI.plClass(score.returnPct));
+    }
+
+    if (hasCash) {
+      kpis += `<span class="dashboard-kpi__sep"></span>`;
+      kpis += kpiItem('Cash', UI.currency(totalCash));
+    }
+
+    if (totalPortfolio != null) {
+      kpis += `<span class="dashboard-kpi__sep"></span>`;
+      kpis += kpiItem('Total Portfolio', UI.currency(totalPortfolio));
+    }
+
+    // Meta row
+    const meta = `<div class="dashboard-kpi-meta">
+      <span>${kpi.positionsTotal} positions &middot; ${txCount} transactions</span>
+      <a class="dashboard-kpi-meta__link" href="#analysis/overview">Detailed view &rarr;</a>
+    </div>`;
+
+    return `<div class="dashboard-kpi-strip">${kpis}${meta}</div>`;
+  }
+
+  function kpiItem(label, value, colorClass, hero) {
+    const heroClass = hero ? ' dashboard-kpi--hero' : '';
+    const cls = colorClass ? ` ${colorClass}` : '';
+    return `<div class="dashboard-kpi${heroClass}">
+      <span class="dashboard-kpi__label">${label}</span>
+      <span class="dashboard-kpi__value${cls}">${value}</span>
+    </div>`;
   }
 
   function renderUnpricedDisclaimer(unpriced) {
@@ -123,190 +164,6 @@ const DashboardView = (() => {
             <span class="unpriced-disclaimer__cost">${UI.currency(totalCost)} at cost basis</span>
           </div>
           <div class="unpriced-disclaimer__note">Market Value, Unrealized P&L, and allocation charts only reflect priced positions.</div>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderScoreboard(score, kpi, txCount) {
-    const proceeds = score.totalProceeds;
-    const hasUnrealized = score.unrealizedPL != null;
-    const unpricedCost = score.costBasis - score.costBasisPriced;
-    const displayMktValue = score.marketValue + unpricedCost;
-
-    // Visual cost of sold (ensures Sold + Holding = Deployed in the diagram)
-    const costOfSold = Math.max(0, score.totalDeployed - score.costBasis);
-    const realizedPct = costOfSold > 0 ? (score.totalRealized / costOfSold) * 100 : 0;
-    const unrealizedPct = hasUnrealized && score.costBasisPriced > 0
-      ? (score.unrealizedPL / score.costBasisPriced) * 100 : null;
-    const fCB = Math.max(1, score.costBasis);
-    const fDeployed = costOfSold + fCB;
-
-    const realGain = score.totalRealized >= 0;
-    const fRealPL = Math.min(fDeployed * 0.3, Math.abs(score.totalRealized));
-
-    const unrealGain = hasUnrealized ? score.unrealizedPL >= 0 : false;
-    const fUnrealPL = hasUnrealized
-      ? Math.min(fDeployed * 0.3, Math.abs(score.unrealizedPL)) : 0;
-
-    const fTopPad = realGain ? fRealPL : 0;
-    const fBotPad = (hasUnrealized && unrealGain) ? fUnrealPL : 0;
-
-    // Guide line positions — calc() accounts for the 3 × 2px gaps in the flex container.
-    // Each guide's bottom = ratio × (100% − 6px) + gapOffset, where gapOffset counts
-    // how many gaps sit below that guide line.
-    const totalF = fTopPad + fDeployed + fBotPad;
-    const GAP_TOTAL = 6; // 3 gaps × 2px
-    const rCB  = totalF > 0 ? (fBotPad + fCB) / totalF : 0;
-    const rDep = totalF > 0 ? (fBotPad + fDeployed) / totalF : 0;
-    // guideCB: top of the CB segment (1 gap below it → +2px)
-    const guideCBCalc = `calc(${(rCB * 100).toFixed(2)}% + ${(2 - rCB * GAP_TOTAL).toFixed(2)}px)`;
-    // guideDeployed: top of the sold-deployed segment (2 gaps below → +4px).
-    // When costOfSold=0 the sold half collapses, so both guides coincide.
-    const guideDeployedCalc = costOfSold > 0
-      ? `calc(${(rDep * 100).toFixed(2)}% + ${(4 - rDep * GAP_TOTAL).toFixed(2)}px)`
-      : guideCBCalc;
-
-    // Collapse style for zero-height items
-    const ZERO = 'flex:0 0 0;min-height:0;padding:0;overflow:hidden;';
-
-    // ── Column 1: Always 4 items to match Column 2 ──
-    // Split Deployed into sold-portion + hold-portion so gap count matches.
-    // box-shadow on the top half bridges the 2px gap so they look like one block.
-    const hasSoldPortion = costOfSold > 0;
-    const mergeTop = hasSoldPortion
-      ? 'border-radius:3px 3px 0 0;box-shadow:0 2px 0 0 var(--accent);position:relative;z-index:1;' : '';
-    const mergeBot = hasSoldPortion ? 'border-radius:0 0 3px 3px;' : '';
-
-    const col1HTML = `
-      <div class="scoreboard__blocks-seg" style="${fTopPad > 0 ? `flex:${fTopPad} 0 0;` : ZERO}"></div>
-      <div class="scoreboard__blocks-seg" data-group="deployed" style="${hasSoldPortion ? `flex:${costOfSold} 0 0;` : ZERO}background:var(--accent);${mergeTop}"></div>
-      <div class="scoreboard__blocks-seg" data-group="deployed" style="flex:${fCB} 0 0;background:var(--accent);${mergeBot}">
-        <span class="scoreboard__blocks-seg-name">Deployed</span>
-        <span class="scoreboard__blocks-seg-val">${UI.currency(score.totalDeployed)}</span>
-      </div>
-      <div class="scoreboard__blocks-seg" style="${fBotPad > 0 ? `flex:${fBotPad} 0 0;` : ZERO}"></div>
-    `;
-
-    // ── Column 2: Always 4 items ──
-    let col2HTML = '';
-
-    // Item 1: Top P&L (or empty placeholder)
-    if (fRealPL > 0) {
-      const plClass = realGain ? 'scoreboard__seg--gain' : 'scoreboard__seg--loss';
-      const plColor = realGain ? '#3fb950' : '#f85149';
-      col2HTML += `<div class="scoreboard__blocks-seg ${plClass}" data-group="sold" style="flex:${fRealPL} 0 0;">
-        <span class="scoreboard__blocks-seg-val" style="color:${plColor};">${UI.plSign(score.totalRealized)}${UI.currency(Math.abs(score.totalRealized))}</span>
-      </div>`;
-    } else {
-      col2HTML += `<div class="scoreboard__blocks-seg" style="${ZERO}"></div>`;
-    }
-
-    // Item 2: Sold block
-    const fSoldVis = realGain ? costOfSold : Math.max(1, costOfSold - fRealPL);
-    col2HTML += `<div class="scoreboard__blocks-seg" data-group="sold" style="flex:${fSoldVis} 0 0;background:#484f58;">
-      <span class="scoreboard__blocks-seg-name">Sold</span>
-      <span class="scoreboard__blocks-seg-val">${UI.currency(costOfSold)}</span>
-    </div>`;
-
-    // Item 3: Holding block
-    const fHoldVis = (!hasUnrealized || unrealGain) ? fCB : Math.max(1, fCB - fUnrealPL);
-    col2HTML += `<div class="scoreboard__blocks-seg" data-group="open" style="flex:${fHoldVis} 0 0;background:rgba(88,166,255,0.5);">
-      <span class="scoreboard__blocks-seg-name">Holding</span>
-      <span class="scoreboard__blocks-seg-val">${UI.currency(score.costBasis)}</span>
-    </div>`;
-
-    // Item 4: Bottom P&L (or empty placeholder)
-    if (hasUnrealized && fUnrealPL > 0) {
-      const plClass = unrealGain ? 'scoreboard__seg--gain' : 'scoreboard__seg--loss';
-      const plColor = unrealGain ? '#3fb950' : '#f85149';
-      col2HTML += `<div class="scoreboard__blocks-seg ${plClass}" data-group="open" style="flex:${fUnrealPL} 0 0;">
-        <span class="scoreboard__blocks-seg-val" style="color:${plColor};">${UI.plSign(score.unrealizedPL)}${UI.currency(Math.abs(score.unrealizedPL))}</span>
-      </div>`;
-    } else {
-      col2HTML += `<div class="scoreboard__blocks-seg" style="${ZERO}"></div>`;
-    }
-
-    return `
-      <div class="scoreboard">
-        <div class="scoreboard__header">
-          <span class="scoreboard__title">Investment Scoreboard</span>
-          ${UI.helpBtn('scoreboard')}
-          <span class="scoreboard__meta">
-            ${kpi.positionsTotal} positions (${kpi.positionsPriced} priced) ${UI.helpBtn('positions-priced')}
-            &middot; ${txCount} transactions
-          </span>
-        </div>
-
-        <div class="scoreboard__body">
-          <div class="scoreboard__visual">
-            <div class="scoreboard__blocks-area">
-              <div class="scoreboard__blocks-stack">${col1HTML}</div>
-              <div class="scoreboard__blocks-stack">${col2HTML}</div>
-            </div>
-            <div class="scoreboard__col-labels">
-              <span>Deployed</span>
-              <span>Breakdown</span>
-            </div>
-          </div>
-
-          <div class="scoreboard__stats">
-            <div class="scoreboard__stat-deployed" data-group="deployed">
-              <div class="scoreboard__stat-row">
-                <span>Total Deployed</span>
-                <span class="mono">${UI.currency(score.totalDeployed)}</span>
-              </div>
-            </div>
-
-            <div class="scoreboard__stat-group" data-group="sold">
-              <div class="scoreboard__stat-head">Sold positions</div>
-              <div class="scoreboard__stat-row">
-                <span>Cost</span>
-                <span class="mono">${UI.currency(costOfSold)}</span>
-              </div>
-              <div class="scoreboard__stat-row">
-                <span>Proceeds</span>
-                <span class="mono">${UI.currency(proceeds)}</span>
-              </div>
-              <div class="scoreboard__stat-row scoreboard__stat-row--hl">
-                <span>Realized P&L</span>
-                <span class="mono ${UI.plClass(score.totalRealized)}">${UI.currency(score.totalRealized)} <small>(${UI.pct(realizedPct)})</small></span>
-              </div>
-            </div>
-
-            <div class="scoreboard__stat-group" data-group="open">
-              <div class="scoreboard__stat-head">Open positions</div>
-              <div class="scoreboard__stat-row">
-                <span>Cost basis</span>
-                <span class="mono">${UI.currency(score.costBasis)}</span>
-              </div>
-              <div class="scoreboard__stat-row">
-                <span>Mkt Value${unpricedCost > 0 && score.hasAnyPrice ? '*' : ''}</span>
-                <span class="mono">${score.hasAnyPrice ? UI.currency(displayMktValue) : '<span style="color:var(--text-muted);">N/A</span>'}</span>
-              </div>
-              <div class="scoreboard__stat-row scoreboard__stat-row--hl">
-                <span>Unrealized P&L</span>
-                ${hasUnrealized
-                  ? `<span class="mono ${UI.plClass(score.unrealizedPL)}">${UI.currency(score.unrealizedPL)} <small>(${UI.pct(unrealizedPct)})</small></span>`
-                  : `<span style="color:var(--text-muted);">N/A</span>`}
-              </div>
-            </div>
-
-            <div class="scoreboard__stat-total" data-group="total">
-              <div class="scoreboard__stat-row">
-                <span>Total P&L</span>
-                ${hasUnrealized
-                  ? `<span class="mono ${UI.plClass(score.totalPL)}" style="font-weight:700;">${UI.currency(score.totalPL)}</span>`
-                  : `<span class="mono ${UI.plClass(score.totalRealized)}" style="font-weight:700;">${UI.currency(score.totalRealized)}</span>`}
-              </div>
-              <div class="scoreboard__stat-row">
-                <span>Return</span>
-                ${hasUnrealized
-                  ? `<span class="mono ${UI.plClass(score.returnPct)}" style="font-weight:700;">${UI.pct(score.returnPct)}</span>`
-                  : `<span style="color:var(--text-muted);">Realized only</span>`}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     `;
@@ -410,8 +267,6 @@ const DashboardView = (() => {
   async function loadPortfolioValueLine(transactions) {
     if (!transactions.length) return;
 
-    const loadingEl = document.getElementById('portfolio-chart-loading');
-    const loadingTextEl = document.getElementById('portfolio-chart-loading-text');
     const legendEl = document.getElementById('portfolio-chart-legend');
 
     // Use ALL raw transactions (unfiltered) to determine which symbols need histories.
@@ -431,10 +286,7 @@ const DashboardView = (() => {
         priceHistories = cachedPriceHistories;
       } else {
         // Cache miss — fetch all histories (the slow part)
-        if (loadingEl) loadingEl.style.display = '';
-        priceHistories = await API.fetchAllHistories(pricedSymbols, '5y', (fetched, total) => {
-          if (loadingTextEl) loadingTextEl.textContent = `Loading prices... ${fetched}/${total}`;
-        });
+        priceHistories = await API.fetchAllHistories(pricedSymbols, '5y');
         cachedPriceHistories = priceHistories;
         cachedTxCount = rawCount;
       }
@@ -519,14 +371,11 @@ const DashboardView = (() => {
 
       chart.update();
 
-      // Show legend, hide loading
+      // Show legend
       if (legendEl) legendEl.style.display = '';
-      if (loadingEl) loadingEl.style.display = 'none';
 
     } catch (e) {
       console.warn('Portfolio value timeline failed:', e);
-      // Graceful degradation: invested-only chart remains
-      if (loadingEl) loadingEl.style.display = 'none';
     }
   }
 

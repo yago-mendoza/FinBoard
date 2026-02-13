@@ -1,7 +1,7 @@
 /* ── Demo Data: example CSV content for quick launch ── */
 const DemoData = (() => {
 
-  const STOCK = `DATETIME|TYPE|PLATFORM|ACTION|SYMBOL|QUANTITY|PRICE|BALANCE
+  const UNIFIED = `DATETIME|TYPE|PLATFORM|ACTION|SYMBOL|QUANTITY|PRICE|BALANCE
 23-02-10-09-30|MKT|ETOR|buy|AAPL|+4.0|152.30|-609.20
 23-02-10-09-35|MKT|ETOR|buy|PYPL|+8.0|76.50|-612.00
 23-03-01-10-00|MKT|DGRO|buy|MSFT|+2.0|248.60|-497.20
@@ -69,9 +69,7 @@ const DemoData = (() => {
 25-07-01-09-00|MKT|IBKR|buy|JPM|+1.0|238.60|-238.60
 25-08-01-10-00|MKT|DGRO|sel|ROKU|-6.0|92.50|+555.00
 25-09-01-14-00|ETF|IBKR|buy|QQQ|+1.0|548.20|-548.20
-25-10-01-09-30|MKT|ETOR|buy|AAPL|+1.0|235.60|-235.60`;
-
-  const CRYPTO = `DATETIME|TYPE|PLATFORM|ACTION|SYMBOL|QUANTITY|PRICE|BALANCE
+25-10-01-09-30|MKT|ETOR|buy|AAPL|+1.0|235.60|-235.60
 21-11-10-10-00|CRP|COBS|buy|BTC|+0.03|62500|-1875.00
 21-11-10-10-05|CRP|KRKN|buy|ETH|+0.8|4520|-3616.00
 21-12-01-14-30|CRP|BINA|buy|DOGE|+4000.0|0.172|-688.00
@@ -120,8 +118,16 @@ const DemoData = (() => {
 25-08-01-14-00|CRP|KRKN|sel|ATOM|-25.0|8.80|+220.00
 25-10-01-09-00|CRP|COBS|buy|XRP|+150.0|1.85|-277.50`;
 
-  function getStockCSV() { return STOCK; }
-  function getCryptoCSV() { return CRYPTO; }
+  const CASH_BALANCES = {
+    ETOR: 1250.00,
+    TDRP: 480.00,
+    IBKR: 620.50,
+    DGRO: 310.00,
+    T212: 175.30,
+  };
 
-  return { getStockCSV, getCryptoCSV };
+  function getUnifiedCSV() { return UNIFIED; }
+  function getCashBalances() { return { ...CASH_BALANCES }; }
+
+  return { getUnifiedCSV, getCashBalances };
 })();

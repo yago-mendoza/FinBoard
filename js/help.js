@@ -14,13 +14,9 @@ const HelpTexts = (() => {
       title: 'Transactions',
       content: 'Complete history of every buy and sell operation imported from your CSV files. Searchable by symbol and filterable by action type. Shows date, platform, asset type, action, quantity, price, and total amount. Responds to global sidebar filters for platform, type, and date range.',
     },
-    timeline: {
-      title: 'Timeline',
-      content: 'Visual history of your investing activity. The top chart shows cumulative capital invested over time combined with monthly buy/sell bars. The heatmap below shows how active you were each month \u2014 click any month cell to filter all views to that month, or click a year label to filter by year. Colored bars under each cell show the proportion of each asset type.',
-    },
     analysis: {
       title: 'Analysis',
-      content: 'Various aggregation views of your portfolio data. "By Platform" shows investment distribution across brokers. "By Type" groups by asset category. "By Period" shows yearly investment flow with selectable year filters. "P&L Distribution" is a butterfly chart showing unrealized profit/loss per asset (requires live prices).',
+      content: 'Deep-dive into your portfolio data across five sub-tabs:<br><br><b>Overview</b> \u2014 Full Investment Scoreboard with bar diagram, hover interaction, and cash detail.<br><b>Breakdown</b> \u2014 Investment by Platform and by Type with doughnut charts and tables.<br><b>Timeline</b> \u2014 Capital + activity chart, heatmap, monthly summary, and yearly flow.<br><b>P&L</b> \u2014 Butterfly chart of unrealized P&L per asset (requires live prices).<br><b>Compare</b> \u2014 Overlay price charts for multiple holdings.',
     },
     'alloc-type': {
       title: 'Allocation by Type',
@@ -73,6 +69,34 @@ const HelpTexts = (() => {
     'positions-priced': {
       title: 'Positions Priced',
       content: 'Not all of your open positions have live market prices available. Prices are fetched from Yahoo Finance via CORS proxies, and some symbols (less common ETFs, delisted stocks, etc.) may not be found.<br><br><b>"X priced"</b> means X out of your total open positions have a live price. The rest use your cost basis as a fallback, so Market Value and Unrealized P&L will be underestimated until all prices load.<br><br>Click the refresh button (\u21BB) in the top bar to retry fetching prices.',
+    },
+    'csv-format': {
+      title: 'CSV Format',
+      content: 'FinBoard uses a pipe-delimited (|) CSV format with 8 columns:<br><br><b>DATETIME</b> \u2014 YY-MM-DD-HH-MM format<br><b>TYPE</b> \u2014 MKT (stocks), ETF, CRP (crypto), RSC (resources), FUN (funds)<br><b>PLATFORM</b> \u2014 4-letter broker code (e.g., IBKR, TDRP)<br><b>ACTION</b> \u2014 "buy" or "sel" (sell)<br><b>SYMBOL</b> \u2014 Ticker symbol (e.g., AAPL, BTC)<br><b>QUANTITY</b> \u2014 Number of units (+ prefix allowed)<br><b>PRICE</b> \u2014 Price per unit<br><b>BALANCE</b> \u2014 Total cash impact (negative for buys, positive for sells)',
+    },
+    'csv-upload': {
+      title: 'CSV Upload',
+      content: 'You can upload one or more CSV files. Stock and crypto transactions can be in the same file \u2014 the TYPE column differentiates them (MKT for stocks, CRP for crypto). Drop files on the upload zone or click to browse. Files are read locally in your browser and never sent to any server.',
+    },
+    'csv-validation': {
+      title: 'CSV Validation',
+      content: '<b>Errors</b> block you from proceeding and must be fixed in your CSV. Common errors: wrong column count, invalid date format, unknown TYPE or ACTION, non-numeric values.<br><br><b>Warnings</b> are informational and won\'t block you. Examples: positive balance on a buy, possible duplicate rows, extra columns.',
+    },
+    'cash-balances': {
+      title: 'Cash Balances',
+      content: 'Uninvested cash per platform. These appear on your Dashboard as a KPI card and factor into the Total Portfolio calculation. Enter the current cash balance you hold in each broker. You can skip this step and add them later.',
+    },
+    'export': {
+      title: 'Export data',
+      content: 'Copy portfolio data to your clipboard in various formats. <b>Portfolio overview</b> gives a human-readable summary of your positions, P&L, and cash. <b>All holdings</b> copies a tab-separated table you can paste into a spreadsheet. <b>Transaction history</b> exports every buy and sell. You can also export a single asset by typing its symbol.',
+    },
+    'drag-dashboard': {
+      title: 'Dashboard Layout',
+      content: 'Hover over any dashboard section to reveal a grip handle on the left. Drag it to reorder widgets. Your layout is saved and persists across sessions. Use Settings to reset to the default order.',
+    },
+    settings: {
+      title: 'Settings',
+      content: 'Click the gear icon in the top bar to open Settings.<br><br><b>Crypto toggle</b> \u2014 Include or exclude crypto assets.<br><b>Auto-refresh prices</b> \u2014 Fetch live prices automatically on load.<br><b>Show closed positions</b> \u2014 Toggle visibility of fully sold positions.<br><b>Cash balances</b> \u2014 Edit uninvested cash per platform.<br><b>Reset layout</b> \u2014 Restore default dashboard widget order.<br><b>Reset all data</b> \u2014 Clear everything and return to onboarding.',
     },
   };
 

@@ -72,7 +72,7 @@ const HoldingsView = (() => {
         </table>
       </div>
 
-      ${closed.length > 0 ? `
+      ${closed.length > 0 && Settings.get('closedPositions') !== false ? `
         <div class="kpi-grid" style="margin-top: var(--sp-6);">
           <div class="card kpi">
             <div class="kpi__label">Closed Positions</div>
@@ -104,7 +104,7 @@ const HoldingsView = (() => {
                 const proceeds = symTxs.filter(t => t.action === 'sel').reduce((s, t) => s + Math.abs(t.balance), 0);
                 return `
                 <tr style="opacity: 0.7;">
-                  <td class="mono clickable" onclick="Router.navigate('asset-detail','${h.symbol}')">${Config.getDisplayName(h.symbol)}</td>
+                  <td class="mono clickable" onclick="Router.navigate('market','${h.symbol}')">${Config.getDisplayName(h.symbol)}</td>
                   <td>${UI.typeBadge(h.type)}</td>
                   <td class="right mono">${UI.currency(invested)}</td>
                   <td class="right mono">${UI.currency(proceeds)}</td>
@@ -132,7 +132,7 @@ const HoldingsView = (() => {
     const changeInfo = priceChange ? ` (${priceChange.changePct >= 0 ? '+' : ''}${priceChange.changePct.toFixed(2)}%)` : '';
 
     tr.innerHTML = `
-      <td class="mono clickable" onclick="Router.navigate('asset-detail','${h.symbol}')">${Config.getDisplayName(h.symbol)}</td>
+      <td class="mono clickable" onclick="Router.navigate('market','${h.symbol}')">${Config.getDisplayName(h.symbol)}</td>
       <td>${UI.typeBadge(h.type)}</td>
       <td class="right mono">${UI.qty(h.quantity)}</td>
       <td class="right mono">${UI.currency(h.avgCost)}</td>

@@ -8,6 +8,9 @@ const CompareView = (() => {
   let searchQuery = '';
   const historyCache = {};    // 'BTC|1y' → [{date, close}]
   const MAX_SELECTED = 8;
+  let compareChart = null;    // Current Chart.js instance
+  let loadDebounce = null;    // Debounce timer for chart loading
+  let loadAbort = null;       // Abort flag for stale loads
 
   // Type display order
   const TYPE_ORDER = ['MKT', 'ETF', 'CRP', 'RSC', 'FUN'];
@@ -23,7 +26,6 @@ const CompareView = (() => {
     let b = parseInt(hex.slice(5, 7), 16);
     const lum = 0.299 * r + 0.587 * g + 0.114 * b;
     if (lum >= 60) return hex;
-    // Blend toward white
     const t = 0.5;
     r = Math.round(r + (255 - r) * t);
     g = Math.round(g + (255 - g) * t);
@@ -32,6 +34,7 @@ const CompareView = (() => {
   }
 
   function render(container) {
+    compareChart = null;
     const holdings = AppState.get('holdings') || [];
     const active = holdings.filter(h => h.quantity > 0);
 
@@ -40,8 +43,6 @@ const CompareView = (() => {
     selectedSymbols = selectedSymbols.filter(s => activeSymbols.has(s));
 
     container.innerHTML = `
-      <h1 class="view-title">Compare Assets</h1>
-
       <div class="card compare-selector">
         <div class="compare-selector__search">
           <input type="text" class="input input--sm" id="compare-search"
@@ -53,7 +54,7 @@ const CompareView = (() => {
         <div class="compare-selector__chips" id="compare-chips"></div>
       </div>
 
-      <div class="card" style="margin-top:var(--sp-4);">
+      <div class="card" style="margin-top:var(--sp-4); position:relative;">
         <div class="chart-wrap__header">
           <div id="compare-range" style="display:flex; gap:var(--sp-1);">
             ${['1mo', '3mo', '6mo', '1y', '2y', '5y'].map(r => `
@@ -65,10 +66,17 @@ const CompareView = (() => {
             <button class="btn btn--ghost btn--sm compare-mode-btn ${mode === 'price' ? 'active' : ''}" data-mode="price">Price</button>
           </div>
         </div>
-        <div class="chart-canvas-container chart-canvas-container--md" id="compare-chart-area">
+        <div class="chart-canvas-container chart-canvas-container--md" id="compare-chart-area" style="position:relative;">
           <canvas id="chart-compare"></canvas>
+          <div class="compare-progress" id="compare-progress" style="display:none;">
+            <div class="compare-progress__spinner"></div>
+            <div class="compare-progress__text" id="compare-progress-text">Downloading prices...</div>
+            <div class="compare-progress__bar">
+              <div class="compare-progress__bar-fill" id="compare-progress-fill"></div>
+            </div>
+            <div class="compare-progress__count" id="compare-progress-count"></div>
+          </div>
         </div>
-        <div id="compare-loading" class="chart-loading" style="display:none;"></div>
         <div id="compare-empty" class="chart-empty-state" style="display:none;">
           <div class="chart-empty-state__icon">&#x1f4c8;</div>
           <div class="chart-empty-state__text" id="compare-empty-text"></div>
@@ -80,6 +88,37 @@ const CompareView = (() => {
     renderChips(active);
     bindEvents(active);
     updateChartOrEmpty();
+
+    // Prefetch ALL priceable holdings' history in background
+    prefetchAll(active);
+  }
+
+  async function prefetchAll(active) {
+    const priceable = active.filter(h => Config.getYahooTicker(h.symbol)).map(h => h.symbol);
+    const toFetch = priceable.filter(sym => !historyCache[`${sym}|${activeRange}`]);
+    if (toFetch.length === 0) return;
+
+    const total = toFetch.length;
+    let fetched = 0;
+    showOverlay(0, total);
+    updateOverlayText('Preloading all histories...');
+
+    const BATCH = 5;
+    for (let i = 0; i < toFetch.length; i += BATCH) {
+      const batch = toFetch.slice(i, i + BATCH);
+      await Promise.allSettled(batch.map(async sym => {
+        const key = `${sym}|${activeRange}`;
+        try {
+          const data = await API.fetchHistory(sym, activeRange);
+          historyCache[key] = data;
+        } catch { historyCache[key] = []; }
+        fetched++;
+        updateOverlay(fetched, total);
+      }));
+      if (i + BATCH < toFetch.length) await new Promise(r => setTimeout(r, 200));
+    }
+
+    hideOverlay();
   }
 
   function renderChips(active) {
@@ -88,12 +127,11 @@ const CompareView = (() => {
 
     const query = searchQuery.toLowerCase();
     const atLimit = selectedSymbols.length >= MAX_SELECTED;
-    const remaining = MAX_SELECTED - selectedSymbols.length;
 
     // Group by type, filtering by search query
     const groups = {};
     for (const h of active) {
-      if (!Config.getYahooTicker(h.symbol)) continue; // skip unpriced
+      if (!Config.getYahooTicker(h.symbol)) continue;
       const name = Config.getDisplayName(h.symbol).toLowerCase();
       if (query && !h.symbol.toLowerCase().includes(query) && !name.includes(query)) continue;
       if (!groups[h.type]) groups[h.type] = [];
@@ -139,7 +177,6 @@ const CompareView = (() => {
   }
 
   function bindEvents(active) {
-    // Search input
     const search = document.getElementById('compare-search');
     if (search) {
       search.addEventListener('input', () => {
@@ -173,7 +210,6 @@ const CompareView = (() => {
   }
 
   function bindChipClicks(active) {
-    // Individual chip toggles
     document.querySelectorAll('.compare-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const sym = chip.dataset.symbol;
@@ -190,13 +226,11 @@ const CompareView = (() => {
       });
     });
 
-    // "Select all" / "Deselect all" per category
     document.querySelectorAll('.compare-select-all').forEach(btn => {
       btn.addEventListener('click', () => {
         const type = btn.dataset.type;
         const priceable = active.filter(h => h.type === type && Config.getYahooTicker(h.symbol));
 
-        // Apply search filter if active
         const query = searchQuery.toLowerCase();
         const filtered = query
           ? priceable.filter(h => {
@@ -210,10 +244,8 @@ const CompareView = (() => {
         const hasAny = selectedInGroup.length > 0;
 
         if (hasAny) {
-          // Deselect all in this group
           selectedSymbols = selectedSymbols.filter(s => !symsInGroup.includes(s));
         } else {
-          // Select all in this group (respecting limit)
           const remaining = MAX_SELECTED - selectedSymbols.length;
           const toAdd = symsInGroup
             .filter(s => !selectedSymbols.includes(s))
@@ -239,7 +271,8 @@ const CompareView = (() => {
       showEmpty();
     } else {
       hideEmpty();
-      loadCompareChart();
+      clearTimeout(loadDebounce);
+      loadDebounce = setTimeout(loadCompareChart, 120);
     }
   }
 
@@ -250,9 +283,11 @@ const CompareView = (() => {
     if (!empty) return;
 
     Charts.destroy('chart-compare');
+    compareChart = null;
 
     const canvasEl = document.getElementById('chart-compare');
     if (canvasEl) canvasEl.style.display = 'none';
+    hideOverlay();
     empty.style.display = 'flex';
 
     if (selectedSymbols.length === 0) {
@@ -271,99 +306,184 @@ const CompareView = (() => {
     if (canvasEl) canvasEl.style.display = 'block';
   }
 
+  // ── Progress overlay ──
+  function showOverlay(fetched, total) {
+    const overlay = document.getElementById('compare-progress');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    updateOverlay(fetched, total);
+  }
+
+  function updateOverlay(fetched, total) {
+    const text = document.getElementById('compare-progress-text');
+    const count = document.getElementById('compare-progress-count');
+    const fill = document.getElementById('compare-progress-fill');
+    if (text) text.textContent = 'Downloading prices...';
+    if (count) count.textContent = `${fetched} / ${total}`;
+    if (fill) fill.style.width = total > 0 ? `${(fetched / total) * 100}%` : '0%';
+  }
+
+  function hideOverlay() {
+    const overlay = document.getElementById('compare-progress');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  function updateOverlayText(msg) {
+    const text = document.getElementById('compare-progress-text');
+    if (text) text.textContent = msg;
+  }
+
   async function loadCompareChart() {
     if (selectedSymbols.length < 2) return;
 
-    const loading = document.getElementById('compare-loading');
-    if (loading) loading.style.display = 'flex';
+    // Abort flag for stale loads
+    const thisLoad = {};
+    loadAbort = thisLoad;
+
+    // Determine which symbols need downloading
+    const needFetch = [];
+    const alreadyCached = [];
+    for (const sym of selectedSymbols) {
+      const key = `${sym}|${activeRange}`;
+      if (historyCache[key]) {
+        alreadyCached.push(sym);
+      } else {
+        needFetch.push(sym);
+      }
+    }
+
+    const total = needFetch.length;
+    let fetched = 0;
+
+    // Only show overlay if there are downloads needed
+    if (total > 0) {
+      showOverlay(0, total);
+    }
+
+    // Set a 10s timeout — render with what we have if it fires
+    let timedOut = false;
+    const timeoutId = total > 0 ? setTimeout(() => {
+      timedOut = true;
+    }, 10000) : null;
 
     try {
-      const results = await Promise.allSettled(
-        selectedSymbols.map(async sym => {
+      if (total > 0) {
+        // Fetch all needed histories with progress tracking
+        await Promise.allSettled(
+          needFetch.map(async sym => {
+            const key = `${sym}|${activeRange}`;
+            try {
+              const data = await API.fetchHistory(sym, activeRange);
+              historyCache[key] = data;
+            } catch (e) {
+              historyCache[key] = [];
+            }
+            fetched++;
+            if (loadAbort !== thisLoad) return; // stale
+            if (!timedOut) updateOverlay(fetched, total);
+          })
+        );
+      }
+
+      if (timeoutId) clearTimeout(timeoutId);
+      if (loadAbort !== thisLoad) return; // stale load, another started
+
+      hideOverlay();
+
+      // Gather all series from cache
+      const series = selectedSymbols
+        .map(sym => {
           const key = `${sym}|${activeRange}`;
-          if (historyCache[key]) return { symbol: sym, data: historyCache[key] };
-          const data = await API.fetchHistory(sym, activeRange);
-          historyCache[key] = data;
-          return { symbol: sym, data };
+          const data = historyCache[key];
+          return data && data.length > 0 ? { symbol: sym, data } : null;
         })
-      );
-
-      if (loading) loading.style.display = 'none';
-
-      const series = results
-        .filter(r => r.status === 'fulfilled' && r.value.data.length > 0)
-        .map(r => r.value);
+        .filter(Boolean);
 
       if (series.length === 0) {
         showNoData();
         return;
       }
 
-      const aligned = alignDates(series);
+      renderChart(series);
 
-      const datasets = aligned.map(s => {
-        const color = ensureVisibleColor(Config.getSymbolColor(s.symbol));
-        let data;
-        if (mode === 'pct') {
-          const base = s.values.find(v => v != null);
-          data = s.values.map(v => (v != null && base) ? ((v - base) / base) * 100 : null);
-        } else {
-          data = s.values;
-        }
-        return {
-          label: Config.getDisplayName(s.symbol),
-          data,
-          borderColor: color,
-          backgroundColor: color,
-          fill: false,
-          tension: 0.2,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          borderWidth: 2,
-          spanGaps: true,
-        };
-      });
+    } catch (e) {
+      if (timeoutId) clearTimeout(timeoutId);
+      hideOverlay();
+      console.error('Compare chart error:', e);
+    }
+  }
 
-      Charts.create('chart-compare', {
-        type: 'line',
-        data: { labels: aligned[0].dates, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { intersect: false, mode: 'index' },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { maxTicksLimit: 12 },
-            },
-            y: {
-              ticks: {
-                callback: mode === 'pct'
-                  ? v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%'
-                  : v => UI.currencyCompact(v),
-              },
+  function renderChart(series) {
+    const aligned = alignDates(series);
+
+    const datasets = aligned.map(s => {
+      const color = ensureVisibleColor(Config.getSymbolColor(s.symbol));
+      let data;
+      if (mode === 'pct') {
+        const base = s.values.find(v => v != null);
+        data = s.values.map(v => (v != null && base) ? ((v - base) / base) * 100 : null);
+      } else {
+        data = s.values;
+      }
+      return {
+        label: Config.getDisplayName(s.symbol),
+        data,
+        borderColor: color,
+        backgroundColor: color,
+        fill: false,
+        tension: 0.2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        borderWidth: 2,
+        spanGaps: true,
+      };
+    });
+
+    const chartConfig = {
+      type: 'line',
+      data: { labels: aligned[0].dates, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxTicksLimit: 12 },
+          },
+          y: {
+            ticks: {
+              callback: mode === 'pct'
+                ? v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%'
+                : v => UI.currencyCompact(v),
             },
           },
-          plugins: {
-            legend: { display: true },
-            tooltip: {
-              callbacks: {
-                label: ctx => {
-                  if (mode === 'pct') {
-                    const v = ctx.parsed.y;
-                    return ` ${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
-                  }
-                  return ` ${ctx.dataset.label}: ${UI.currency(ctx.parsed.y)}`;
-                },
+        },
+        plugins: {
+          legend: { display: true },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                if (mode === 'pct') {
+                  const v = ctx.parsed.y;
+                  return ` ${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+                }
+                return ` ${ctx.dataset.label}: ${UI.currency(ctx.parsed.y)}`;
               },
             },
           },
         },
-      });
+      },
+    };
 
-    } catch (e) {
-      if (loading) loading.style.display = 'none';
-      console.error('Compare chart error:', e);
+    // Update in-place if chart already exists, otherwise create
+    if (compareChart) {
+      compareChart.data = chartConfig.data;
+      compareChart.options.scales.y.ticks.callback = chartConfig.options.scales.y.ticks.callback;
+      compareChart.options.plugins.tooltip.callbacks.label = chartConfig.options.plugins.tooltip.callbacks.label;
+      compareChart.update();
+    } else {
+      compareChart = Charts.create('chart-compare', chartConfig);
     }
   }
 
@@ -374,6 +494,7 @@ const CompareView = (() => {
     const canvasEl = document.getElementById('chart-compare');
 
     Charts.destroy('chart-compare');
+    compareChart = null;
     if (canvasEl) canvasEl.style.display = 'none';
     if (empty) {
       empty.style.display = 'flex';
@@ -402,8 +523,6 @@ const CompareView = (() => {
 
     return lookups.map(l => {
       const values = [];
-      // Pre-seed with the latest price before the alignment start date,
-      // so series that began earlier don't start with null
       let lastKnown = null;
       for (const d of l.dates) {
         if (d >= latestFirst) break;

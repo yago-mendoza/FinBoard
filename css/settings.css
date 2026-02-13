@@ -1,0 +1,198 @@
+/* ── Settings Panel (slide-out drawer) ── */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 340px;
+  max-width: 90vw;
+  height: 100vh;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-default);
+  z-index: 200;
+  transform: translateX(100%);
+  transition: transform 250ms ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+
+.settings-panel.open {
+  transform: translateX(0);
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 199;
+  display: none;
+}
+
+.settings-overlay.open {
+  display: block;
+}
+
+.settings-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.settings-panel__title {
+  font-size: var(--font-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-panel__close {
+  color: var(--text-secondary);
+}
+
+.settings-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.settings-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-group__label {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-group__desc {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.settings-group--danger {
+  padding: var(--sp-4);
+  background: rgba(248, 81, 73, 0.06);
+  border: 1px solid rgba(248, 81, 73, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--border-default);
+}
+
+/* ── Toggle Switch ── */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch__slider {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: 22px;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.toggle-switch__slider::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: all 200ms ease;
+}
+
+.toggle-switch input:checked + .toggle-switch__slider {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle-switch input:checked + .toggle-switch__slider::before {
+  transform: translateX(18px);
+  background: #fff;
+}
+
+/* ── Cash Balances Editor ── */
+.settings-cash-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: var(--sp-2);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.settings-cash-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-muted);
+  transition: background 150ms;
+}
+
+.settings-cash-row:last-of-type {
+  border-bottom: none;
+}
+
+.settings-cash-row:hover {
+  background: var(--bg-hover);
+}
+
+.settings-cash-label {
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-cash-input {
+  max-width: 100px;
+  text-align: right;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+}
+
+.settings-cash-add {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--border-muted);
+  background: var(--bg-secondary);
+}

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(where:*)",
+      "Bash(node:*)",
+      "Bash(py -3:*)",
+      "Bash(py:*)",
+      "Bash(powershell -Command:*)"
+    ]
+  }
+}

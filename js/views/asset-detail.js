@@ -20,7 +20,7 @@ const AssetDetailView = (() => {
     return '5y';
   }
 
-  function render(container, symbol) {
+  function render(container, symbol, overrideBackLabel, overrideBackAction) {
     if (!symbol) {
       container.innerHTML = '<div class="empty-state"><div class="empty-state__text">No symbol specified</div></div>';
       return;
@@ -59,18 +59,38 @@ const AssetDetailView = (() => {
 
     const hasYahoo = !!Config.getYahooTicker(symbol);
 
+    // Back button: use overrides if provided, otherwise derive from previous route
+    let backLabel, backTarget;
+    if (overrideBackLabel) {
+      backLabel = overrideBackLabel;
+      backTarget = overrideBackAction;
+    } else {
+      const prev = Router.getPrevious();
+      if (prev.view === 'transactions') {
+        backLabel = 'Transactions';
+        backTarget = `Router.navigate('transactions')`;
+      } else if (prev.view === 'holdings') {
+        backLabel = 'Holdings';
+        backTarget = `Router.navigate('holdings')`;
+      } else {
+        backLabel = 'Market';
+        backTarget = `Router.navigate('market','search')`;
+      }
+    }
+
     container.innerHTML = `
       <div style="display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-4);">
-        <button class="btn btn--ghost btn--sm" onclick="Router.navigate('holdings')">&larr; Holdings</button>
+        <button class="btn btn--ghost btn--sm" onclick="${backTarget}">&larr; ${backLabel}</button>
         <h1 style="font-size:var(--font-xl); font-weight:700; display:flex; align-items:center; gap:var(--sp-2);">
           <span style="width:12px; height:12px; border-radius:50%; background:${Config.getSymbolColor(symbol)}; display:inline-block;"></span>
           ${Config.getDisplayLabel(symbol)}
         </h1>
         ${UI.typeBadge(h.type)}
         <span style="color:var(--text-secondary); font-size:var(--font-sm);">${h.platforms.join(', ')}</span>
+        <button class="btn btn--ghost btn--sm" id="btn-copy-asset" title="Copy asset details">Copy</button>
         ${hasYahoo && !isClosed ? `<button class="btn btn--ghost btn--sm" id="btn-compare-asset" style="margin-left:auto;">Compare</button>` : ''}
       </div>
-      ${isClosed ? '<div class="position-closed-banner">Position Closed</div>' : ''}
+      ${isClosed ? '<div class="position-closed-banner">Position closed</div>' : ''}
 
       <!-- Asset hero: price + position + P&L in one glance -->
       <div class="asset-hero">
@@ -175,12 +195,20 @@ const AssetDetailView = (() => {
       });
     });
 
+    // Copy asset button
+    const copyBtn = document.getElementById('btn-copy-asset');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        Export.copyAssetDetail(symbol);
+      });
+    }
+
     // Compare button
     const compareBtn = document.getElementById('btn-compare-asset');
     if (compareBtn) {
       compareBtn.addEventListener('click', () => {
         CompareView.preselect(symbol);
-        Router.navigate('compare');
+        Router.navigate('market', 'compare');
       });
     }
   }

@@ -1,0 +1,10 @@
+/* ── Dashboard Layout ── */
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.widget {
+  position: relative;
+}
