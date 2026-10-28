@@ -1,10 +1,30 @@
 <p align="center">
-  <img src="imgs/summary.png" alt="FinBoard Overview" width="100%"/>
+  <a href="https://infraphysics.net/lab/projects/investment-dashboard"><img src="docs/assets/infraphysics.svg" width="72" alt="InfraPhysics"></a>
 </p>
 
-# FinBoard
+<h1 align="center">FinBoard</h1>
 
-Personal investment dashboard that turns a pipe-delimited CSV ledger into a live portfolio tracker with real-time prices, P&L, and allocation charts.
+<p align="center">
+  A personal investment dashboard with no build step: vanilla JS and Chart.js.<br>
+  A pipe-delimited CSV ledger in, a live portfolio with real-time prices, P&amp;L and allocation out.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/build%20step-none-brightgreen" alt="No build step">
+  <img src="https://img.shields.io/badge/prices-Yahoo%20Finance-6001d2" alt="Prices from Yahoo Finance">
+</p>
+
+<p align="center">
+  <b>A side project of <a href="https://infraphysics.net">InfraPhysics</a>.</b>
+  How it is built and why, at
+  <a href="https://infraphysics.net/lab/projects/investment-dashboard"><b>infraphysics.net/lab/projects/investment-dashboard</b></a>
+</p>
+
+<p align="center">
+  <img src="imgs/summary.png" alt="FinBoard: holdings, P&amp;L, allocation and timeline charts built from a CSV ledger" width="820"/>
+</p>
+
+---
 
 Drop in a CSV of your trades (`DATETIME|TYPE|PLATFORM|ACTION|SYMBOL|QUANTITY|PRICE|BALANCE`), and get a live dashboard with holdings, P&L, asset allocation, transaction history, and timeline charts. Pulls real-time prices from Yahoo Finance.
 
